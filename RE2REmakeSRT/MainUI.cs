@@ -440,6 +440,10 @@ namespace RE2REmakeSRT
                 heightOffset = 70; // Adding an additional offset to accomdate Raw IGT.
             }
 
+//            e.Graphics.DrawString(string.Format("Steps (Session): {0}", Program.gameMem.FootStepsSession), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
+            e.Graphics.DrawString(string.Format("Steps (All): {0}", Program.gameMem.FootStepsAll), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
+
+
             e.Graphics.DrawString(string.Format("DA Rank: {0}", Program.gameMem.Rank), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
             e.Graphics.DrawString(string.Format("DA Score: {0}", Program.gameMem.RankScore), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
 
