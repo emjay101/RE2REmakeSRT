@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 
 namespace RE2REmakeSRT
 {
@@ -17,6 +18,8 @@ namespace RE2REmakeSRT
 
         // Pointers
         public long BaseAddress { get; private set; }
+                
+        public MultilevelPointer FootSteps { get; private set; }        
         public MultilevelPointer PointerIGT { get; private set; }
         public MultilevelPointer PointerRank { get; private set; }
         public MultilevelPointer PointerPlayerHP { get; private set; }
@@ -36,7 +39,9 @@ namespace RE2REmakeSRT
         public long IGTPausedTimer { get; private set; }
         public int Rank { get; private set; }
         public float RankScore { get; private set; }
-
+        public int FootStepsAll { get; private set; }
+        public long LEngineDefaultPoolId { get; private set; }
+        
         // Public Properties - Calculated
         public long IGTRaw => unchecked(IGTRunningTimer - IGTCutsceneTimer - IGTPausedTimer);
         public long IGTCalculated => unchecked(IGTRaw * 10L);
@@ -56,32 +61,38 @@ namespace RE2REmakeSRT
         }
         public string IGTString => IGTTimeSpan.ToString(IGT_TIMESPAN_STRING_FORMAT, CultureInfo.InvariantCulture);
 
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="proc"></param>
         public GameMemory(int pid)
-        {
+        {            
             memoryAccess = new ProcessMemory.ProcessMemory(pid);
             BaseAddress = NativeWrappers.GetProcessBaseAddress(pid, ProcessMemory.PInvoke.ListModules.LIST_MODULES_64BIT).ToInt64(); // Bypass .NET's managed solution for getting this and attempt to get this info ourselves via PInvoke since some users are getting 299 PARTIAL COPY when they seemingly shouldn't. This is built as x64 only and RE2 is x64 only to my knowledge.
 
             // Setup the pointers.
-            PointerIGT = new MultilevelPointer(memoryAccess, BaseAddress + 0x070B0910, 0x2E0, 0x218, 0x610, 0x710, 0x60);
-            PointerRank = new MultilevelPointer(memoryAccess, BaseAddress + 0x0708A9D8);
-            PointerPlayerHP = new MultilevelPointer(memoryAccess, BaseAddress + 0x070B0840, 0x50, 0x20);
-            PointerPlayerPoison = new MultilevelPointer(memoryAccess, BaseAddress + 0x070B0840, 0x50, 0x20, 0xF8);
 
+            //symbol re2.g_LEngineDefaultPoolId is exported and could be resolved using either PE header analysis 
+            //or LoadLibrary on the re2 executeable  GetModuleFileNameEx -> LoadLibrary-> GetProcAddress -> UnloadLibrary
+            LEngineDefaultPoolId = BaseAddress + 0x700AB38; 
+            PointerIGT = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5DD8, 0x2E0, 0x218, 0x610, 0x710, 0x60);
+            PointerRank = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x7FEA0);
+            PointerPlayerHP = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50, 0x20); 
+            PointerPlayerPoison = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50, 0x20, 0xF8); 
+            FootSteps = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x71A48); 
+            
             PointerEnemyEntries = new MultilevelPointer[32];
             for (int i = 0; i < PointerEnemyEntries.Length; ++i)
-                PointerEnemyEntries[i] = new MultilevelPointer(memoryAccess, BaseAddress + 0x070838A8, 0x80 + (i * 0x08), 0x88, 0x18, 0x1A0);
+                PointerEnemyEntries[i] = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x78D70, 0x80 + (i * 0x08), 0x88, 0x18, 0x1A0);
 
             if (!Program.programSpecialOptions.Flags.HasFlag(ProgramFlags.NoInventory))
             {
                 PointerInventoryEntries = new MultilevelPointer[20];
                 for (int i = 0; i < PointerInventoryEntries.Length; ++i)
-                    PointerInventoryEntries[i] = new MultilevelPointer(memoryAccess, BaseAddress + 0x070B0840, 0x50, 0x98, 0x10, 0x20 + (i * 0x08), 0x18);
+                    PointerInventoryEntries[i] = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50, 0x98, 0x10, 0x20 + (i * 0x08), 0x18);
             }
-
+            
             // Initialize variables to default values.
             PlayerCurrentHealth = 0;
             PlayerMaxHealth = 0;
@@ -94,6 +105,8 @@ namespace RE2REmakeSRT
             IGTPausedTimer = 0L;
             Rank = 0;
             RankScore = 0f;
+            FootStepsAll = 0;
+
         }
 
         /// <summary>
@@ -105,6 +118,7 @@ namespace RE2REmakeSRT
             PointerPlayerHP.UpdatePointers();
             PointerPlayerPoison.UpdatePointers();
             PointerRank.UpdatePointers();
+            FootSteps.UpdatePointers();            
 
             for (int i = 0; i < PointerEnemyEntries.Length; ++i)
                 PointerEnemyEntries[i].UpdatePointers();
@@ -126,7 +140,8 @@ namespace RE2REmakeSRT
             IGTRunningTimer = PointerIGT.DerefLong(0x18);
             IGTCutsceneTimer = PointerIGT.DerefLong(0x20);
             IGTMenuTimer = PointerIGT.DerefLong(0x28);
-            IGTPausedTimer = PointerIGT.DerefLong(0x30);
+            IGTPausedTimer = PointerIGT.DerefLong(0x30);            
+            FootStepsAll = FootSteps.DerefInt(0x64);
         }
 
         /// <summary>
@@ -145,6 +160,7 @@ namespace RE2REmakeSRT
             PlayerPoisoned = PointerPlayerPoison.DerefByte(0x258) == 0x01;
             Rank = PointerRank.DerefInt(0x58);
             RankScore = PointerRank.DerefFloat(0x5C);
+            
 
             // Enemy HP
             for (int i = 0; i < PointerEnemyEntries.Length; ++i)
