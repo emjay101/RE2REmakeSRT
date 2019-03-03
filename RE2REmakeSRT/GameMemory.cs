@@ -38,7 +38,7 @@ namespace RE2REmakeSRT
         public int PlayerCurrentHealth { get; private set; }
         public int PlayerMaxHealth { get; private set; }
         public bool PlayerPoisoned { get; private set; }
-        public InventoryEntry[] PlayerInventory { get; private set; }
+        public InventoryEntry?[] PlayerInventory { get; private set; }
         public RE2_NPC?[] EnemyHealth { get; private set; }
         public long IGTRunningTimer { get; private set; }
         public long IGTCutsceneTimer { get; private set; }
@@ -127,15 +127,17 @@ namespace RE2REmakeSRT
             PointerPlayerHP.UpdatePointers();
             PointerPlayerPoison.UpdatePointers();
             PointerRank.UpdatePointers();
-            FootSteps.UpdatePointers();
-            EnemyTable.UpdatePointers();
+            FootSteps.UpdatePointers();            
             UpdateEnemyTable();
+            UpdateIventory();
+
         }
 
         private void UpdateEnemyTable()
         {
             int hp, hpmax;
-            bool poisoned;            
+            bool poisoned;
+            EnemyTable?.UpdatePointers();
             CountEnemyEntries = EnemyTable?.DerefInt(0x18) ?? 0;
             if (CountEnemyEntries > 0)
             {
@@ -199,8 +201,7 @@ namespace RE2REmakeSRT
             PlayerPoisoned = PointerPlayerPoison.DerefByte(0x258) == 0x01;
             Rank = PointerRank.DerefInt(0x58);
             RankScore = PointerRank.DerefFloat(0x5C);
-            FootStepsAll = FootSteps.DerefInt(0x64);
-            EnemyTable?.UpdatePointers();
+            FootStepsAll = FootSteps.DerefInt(0x64);           
             UpdateEnemyTable();
             UpdateIventory();
         }
@@ -213,13 +214,16 @@ namespace RE2REmakeSRT
                 for (int i = 0; i < (PointerInventoryEntries?.Length ?? 0); i++)
                 {
                     PointerInventoryEntries[i]?.UpdatePointers();
-                    long invDataPointer = PointerInventoryEntries[i].DerefLong(0x10);
-                    long invDataOffset = invDataPointer - PointerInventoryEntries[i].Address;
-                    PlayerInventory[i] = new InventoryEntry(PointerInventoryEntries[i].DerefInt(0x28), PointerInventoryEntries[i].DerefByteArray(invDataOffset + 0x10, 0x14));
+                    long invDataPointer = PointerInventoryEntries[i]?.DerefLong(0x10)??0;
+                    if (invDataPointer != 0)
+                    {
+                        long invDataOffset = invDataPointer - PointerInventoryEntries[i].Address;                        
+                        PlayerInventory[i] = new InventoryEntry(PointerInventoryEntries[i].DerefInt(0x28), PointerInventoryEntries[i].DerefByteArray(invDataOffset + 0x10, 0x14));
+                    }
                 }
             }
         }
-
+        
         public static Bitmap inventoryImage;
         public static Bitmap inventoryImagePatch1;
         public static IReadOnlyDictionary<ItemEnumeration, Rectangle> ItemToImageTranslation;
