@@ -82,7 +82,7 @@ namespace RE2REmakeSRT
             PlayerCurrentHealth = 0;
             PlayerMaxHealth = 0;
             PlayerPoisoned = false;
-            PlayerInventory = new InventoryEntry[20];
+            PlayerInventory = new InventoryEntry?[20];
             EnemyHealth = new RE2_NPC?[MAX_ENEMY_COUNT];
             IGTRunningTimer = 0L;
             IGTCutsceneTimer = 0L;
@@ -164,10 +164,7 @@ namespace RE2REmakeSRT
                             }
                         }
                     }
-                    if (EnemyHealth[i].HasValue)                    
-                        EnemyHealth[i].Value.Update(hpmax, hp, poisoned);                    
-                    else 
-                        EnemyHealth[i] = new RE2_NPC(hpmax, hp, poisoned);                                    
+                    EnemyHealth[i] = new RE2_NPC(hpmax, hp, poisoned);                                    
                 }
             }
         }

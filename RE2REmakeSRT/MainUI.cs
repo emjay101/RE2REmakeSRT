@@ -326,9 +326,10 @@ namespace RE2REmakeSRT
                 e.Graphics.InterpolationMode = interpolationMode;
                 e.Graphics.PixelOffsetMode = pixelOffsetMode;
                 e.Graphics.TextRenderingHint = textRenderingHint;
-
-                foreach (InventoryEntry inv in Program.gameMem.PlayerInventory)
+                InventoryEntry inv;
+                foreach (var invS in Program.gameMem.PlayerInventory.Where(a => a.HasValue))
                 {
+                    inv = invS.Value;
                     if (inv == default || inv.SlotPosition < 0 || inv.SlotPosition > 19 || inv.IsEmptySlot)
                         continue;
 
