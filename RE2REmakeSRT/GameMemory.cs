@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace RE2REmakeSRT
@@ -19,20 +20,26 @@ namespace RE2REmakeSRT
         // Pointers
         public long BaseAddress { get; private set; }
                 
-        public MultilevelPointer FootSteps { get; private set; }        
+        public MultilevelPointer FootSteps { get; private set; }
+        public MultilevelPointer EnemyTable { get; private set; }
+        
         public MultilevelPointer PointerIGT { get; private set; }
         public MultilevelPointer PointerRank { get; private set; }
         public MultilevelPointer PointerPlayerHP { get; private set; }
         public MultilevelPointer PointerPlayerPoison { get; private set; }
+
         public MultilevelPointer[] PointerEnemyEntries { get; private set; }
+        public MultilevelPointer[] PointerEnemyStatusEntries { get; private set; }
         public MultilevelPointer[] PointerInventoryEntries { get; private set; }
 
+        public int CountEnemyEntries { get; private set; }
+        
         // Public Properties
         public int PlayerCurrentHealth { get; private set; }
         public int PlayerMaxHealth { get; private set; }
         public bool PlayerPoisoned { get; private set; }
         public InventoryEntry[] PlayerInventory { get; private set; }
-        public EnemyHP[] EnemyHealth { get; private set; }
+        public RE2_NPC?[] EnemyHealth { get; private set; }
         public long IGTRunningTimer { get; private set; }
         public long IGTCutsceneTimer { get; private set; }
         public long IGTMenuTimer { get; private set; }
@@ -45,6 +52,9 @@ namespace RE2REmakeSRT
         // Public Properties - Calculated
         public long IGTRaw => unchecked(IGTRunningTimer - IGTCutsceneTimer - IGTPausedTimer);
         public long IGTCalculated => unchecked(IGTRaw * 10L);
+
+        const int MAX_ENEMY_COUNT = 32;
+
         public TimeSpan IGTTimeSpan
         {
             get
@@ -67,38 +77,13 @@ namespace RE2REmakeSRT
         /// </summary>
         /// <param name="proc"></param>
         public GameMemory(int pid)
-        {            
-            memoryAccess = new ProcessMemory.ProcessMemory(pid);
-            BaseAddress = NativeWrappers.GetProcessBaseAddress(pid, ProcessMemory.PInvoke.ListModules.LIST_MODULES_64BIT).ToInt64(); // Bypass .NET's managed solution for getting this and attempt to get this info ourselves via PInvoke since some users are getting 299 PARTIAL COPY when they seemingly shouldn't. This is built as x64 only and RE2 is x64 only to my knowledge.
-
-            // Setup the pointers.
-
-            //symbol re2.g_LEngineDefaultPoolId is exported and could be resolved using either PE header analysis 
-            //or LoadLibrary on the re2 executeable  GetModuleFileNameEx -> LoadLibrary-> GetProcAddress -> UnloadLibrary
-            LEngineDefaultPoolId = BaseAddress + 0x700AB38; 
-            PointerIGT = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5DD8, 0x2E0, 0x218, 0x610, 0x710, 0x60);
-            PointerRank = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x7FEA0);
-            PointerPlayerHP = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50, 0x20); 
-            PointerPlayerPoison = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50, 0x20, 0xF8); 
-            FootSteps = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x71A48); 
-            
-            PointerEnemyEntries = new MultilevelPointer[32];
-            for (int i = 0; i < PointerEnemyEntries.Length; ++i)
-                PointerEnemyEntries[i] = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x78D70, 0x80 + (i * 0x08), 0x88, 0x18, 0x1A0);
-
-            if (!Program.programSpecialOptions.Flags.HasFlag(ProgramFlags.NoInventory))
-            {
-                PointerInventoryEntries = new MultilevelPointer[20];
-                for (int i = 0; i < PointerInventoryEntries.Length; ++i)
-                    PointerInventoryEntries[i] = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50, 0x98, 0x10, 0x20 + (i * 0x08), 0x18);
-            }
-            
+        {
             // Initialize variables to default values.
             PlayerCurrentHealth = 0;
             PlayerMaxHealth = 0;
             PlayerPoisoned = false;
             PlayerInventory = new InventoryEntry[20];
-            EnemyHealth = new EnemyHP[32];
+            EnemyHealth = new RE2_NPC?[MAX_ENEMY_COUNT];
             IGTRunningTimer = 0L;
             IGTCutsceneTimer = 0L;
             IGTMenuTimer = 0L;
@@ -107,7 +92,31 @@ namespace RE2REmakeSRT
             RankScore = 0f;
             FootStepsAll = 0;
 
+            memoryAccess = new ProcessMemory.ProcessMemory(pid);
+            BaseAddress = NativeWrappers.GetProcessBaseAddress(pid, ProcessMemory.PInvoke.ListModules.LIST_MODULES_64BIT).ToInt64(); // Bypass .NET's managed solution for getting this and attempt to get this info ourselves via PInvoke since some users are getting 299 PARTIAL COPY when they seemingly shouldn't. This is built as x64 only and RE2 is x64 only to my knowledge.
+            PointerEnemyEntries = new MultilevelPointer[MAX_ENEMY_COUNT];
+            PointerEnemyStatusEntries = new MultilevelPointer[MAX_ENEMY_COUNT];            
+            //symbol re2.g_LEngineDefaultPoolId is exported and could be resolved using either PE header analysis 
+            //or LoadLibrary on the re2 executeable  GetModuleFileNameEx -> LoadLibrary-> GetProcAddress -> UnloadLibrary
+            LEngineDefaultPoolId = BaseAddress + 0x700AB38;
+            // Setup the pointers.
+            PointerIGT = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5DD8, 0x2E0L, 0x218L, 0x610L, 0x710L, 0x60L);
+            PointerRank = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x7FEA0);
+            PointerPlayerHP = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08, 0x50L, 0x20L);
+            PointerPlayerPoison = new MultilevelPointer(memoryAccess, PointerPlayerHP.Address+0xF8L);
+            FootSteps = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x71A48);                 
+            EnemyTable = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0x78D78);
+            UpdateEnemyTable();
+
+            if (!Program.programSpecialOptions.Flags.HasFlag(ProgramFlags.NoInventory))
+            {
+                PointerInventoryEntries = new MultilevelPointer[20];
+                for (int i = 0; i < PointerInventoryEntries.Length; ++i)
+                    PointerInventoryEntries[i] = new MultilevelPointer(memoryAccess, LEngineDefaultPoolId + 0xA5D08L, 0x50L, 0x98L, 0x10L, 0x20L + (i * 0x08), 0x18L);
+            }
         }
+
+      //  ] +48] + 88] + 18] + 1a0
 
         /// <summary>
         /// 
@@ -118,15 +127,46 @@ namespace RE2REmakeSRT
             PointerPlayerHP.UpdatePointers();
             PointerPlayerPoison.UpdatePointers();
             PointerRank.UpdatePointers();
-            FootSteps.UpdatePointers();            
+            FootSteps.UpdatePointers();
+            EnemyTable.UpdatePointers();
+            UpdateEnemyTable();
+        }
 
-            for (int i = 0; i < PointerEnemyEntries.Length; ++i)
-                PointerEnemyEntries[i].UpdatePointers();
-
-            if (!Program.programSpecialOptions.Flags.HasFlag(ProgramFlags.NoInventory))
+        private void UpdateEnemyTable()
+        {
+            int hp, hpmax;
+            bool poisoned;            
+            CountEnemyEntries = EnemyTable?.DerefInt(0x18) ?? 0;
+            if (CountEnemyEntries > 0)
             {
-                for (int i = 0; i < PointerInventoryEntries.Length; ++i)
-                    PointerInventoryEntries[i].UpdatePointers();
+                byte[] npc_list = EnemyTable.DerefByteArray(0x40, CountEnemyEntries * sizeof(long));
+                long npc_idx = -1;
+                for (int i = 0; i < CountEnemyEntries; ++i)
+                {
+                    hp = 0;
+                    hpmax = 0;
+                    poisoned = false;
+
+                    npc_idx = BitConverter.ToInt64(npc_list, i * sizeof(long));
+                    if (npc_idx != 0)
+                    {
+                        if (npc_idx + 0x88L != (PointerEnemyEntries[i]?.Address ?? 0L))
+                        {
+                            PointerEnemyEntries[i] = new MultilevelPointer(memoryAccess, npc_idx + 0x88L, 0x18L, 0x1A0L);
+                            if ((PointerEnemyEntries[i]?.Address ?? 0L) != 0L)
+                            {
+                                PointerEnemyStatusEntries[i] = new MultilevelPointer(memoryAccess, PointerEnemyEntries[i].Address + 0xF8);
+                                hp = PointerEnemyEntries[i]?.DerefInt(0x58) ?? 0;
+                                hpmax = PointerEnemyEntries[i]?.DerefInt(0x54) ?? 00;
+                                poisoned = (PointerEnemyStatusEntries[i]?.DerefByte(0x258) ?? 0 )== 1;
+                            }
+                        }
+                    }
+                    if (EnemyHealth[i].HasValue)                    
+                        EnemyHealth[i].Value.Update(hpmax, hp, poisoned);                    
+                    else 
+                        EnemyHealth[i] = new RE2_NPC(hpmax, hp, poisoned);                                    
+                }
             }
         }
 
@@ -140,8 +180,7 @@ namespace RE2REmakeSRT
             IGTRunningTimer = PointerIGT.DerefLong(0x18);
             IGTCutsceneTimer = PointerIGT.DerefLong(0x20);
             IGTMenuTimer = PointerIGT.DerefLong(0x28);
-            IGTPausedTimer = PointerIGT.DerefLong(0x30);            
-            FootStepsAll = FootSteps.DerefInt(0x64);
+            IGTPausedTimer = PointerIGT.DerefLong(0x30);                               
         }
 
         /// <summary>
@@ -160,17 +199,20 @@ namespace RE2REmakeSRT
             PlayerPoisoned = PointerPlayerPoison.DerefByte(0x258) == 0x01;
             Rank = PointerRank.DerefInt(0x58);
             RankScore = PointerRank.DerefFloat(0x5C);
-            
+            FootStepsAll = FootSteps.DerefInt(0x64);
+            EnemyTable?.UpdatePointers();
+            UpdateEnemyTable();
+            UpdateIventory();
+        }
 
-            // Enemy HP
-            for (int i = 0; i < PointerEnemyEntries.Length; ++i)
-                EnemyHealth[i] = new EnemyHP(PointerEnemyEntries[i].DerefInt(0x54), PointerEnemyEntries[i].DerefInt(0x58));
-
+        private void UpdateIventory()
+        {
             // Inventory
             if (!Program.programSpecialOptions.Flags.HasFlag(ProgramFlags.NoInventory))
             {
-                for (int i = 0; i < PointerInventoryEntries.Length; ++i)
+                for (int i = 0; i < (PointerInventoryEntries?.Length ?? 0); i++)
                 {
+                    PointerInventoryEntries[i]?.UpdatePointers();
                     long invDataPointer = PointerInventoryEntries[i].DerefLong(0x10);
                     long invDataOffset = invDataPointer - PointerInventoryEntries[i].Address;
                     PlayerInventory[i] = new InventoryEntry(PointerInventoryEntries[i].DerefInt(0x28), PointerInventoryEntries[i].DerefByteArray(invDataOffset + 0x10, 0x14));

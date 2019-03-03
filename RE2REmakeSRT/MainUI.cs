@@ -402,13 +402,13 @@ namespace RE2REmakeSRT
 
             g.DrawText(font, 16, redBrush, xOffset + 0, yOffset + (heightGap * ++i), "Enemy HP");
             yOffset += 6;
-            foreach (EnemyHP enemyHP in Program.gameMem.EnemyHealth.Where(a => a.IsAlive).OrderBy(a => a.Percentage).ThenByDescending(a => a.CurrentHP))
+            foreach (RE2_NPC? enemyHP in Program.gameMem.EnemyHealth.Where(a => a?.IsAlive() ?? false).OrderBy(a => a?.Percentage() ?? 0f).ThenByDescending(a => a?.CurrentHP ?? 0))
             {
                 int x = xOffset + 0;
                 int y = yOffset + (heightGap * ++i);
 
-                DrawProgressBarDirectX(g, backBrushDirectX, foreBrushDirectX, x, y, 158, heightGap, enemyHP.Percentage * 100f, 100f);
-                g.DrawText(font, 12, redBrush, x + 5, y, string.Format("{0} {1:P1}", enemyHP.CurrentHP, enemyHP.Percentage));
+                DrawProgressBarDirectX(g, backBrushDirectX, foreBrushDirectX, x, y, 158, heightGap, (enemyHP?.Percentage() ?? 0f) * 100f, 100f);
+                g.DrawText(font, 12, redBrush, x + 5, y, string.Format("{0} {1:P1}", enemyHP?.CurrentHP ?? 0, enemyHP?.Percentage() ?? 0f));
             }
         }
 
@@ -448,13 +448,13 @@ namespace RE2REmakeSRT
             e.Graphics.DrawString(string.Format("DA Score: {0}", Program.gameMem.RankScore), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
 
             e.Graphics.DrawString("Enemy HP", new Font("Consolas", 10, FontStyle.Bold), Brushes.Red, 0, heightOffset + (heightGap * ++i), stdStringFormat);
-            foreach (EnemyHP enemyHP in Program.gameMem.EnemyHealth.Where(a => a.IsAlive).OrderBy(a => a.Percentage).ThenByDescending(a => a.CurrentHP))
+            foreach (RE2_NPC? enemyHP in Program.gameMem.EnemyHealth.Where(a => a?.IsAlive() ?? false).OrderBy(a => a?.Percentage() ?? 0f).ThenByDescending(a => a?.CurrentHP ?? 0))
             {
                 int x = 0;
                 int y = heightOffset + (heightGap * ++i);
 
-                DrawProgressBarGDI(e, backBrushGDI, foreBrushGDI, x, y, 146, heightGap, enemyHP.Percentage * 100f, 100f);
-                e.Graphics.DrawString(string.Format("{0} {1:P1}", enemyHP.CurrentHP, enemyHP.Percentage), new Font("Consolas", 10, FontStyle.Bold), Brushes.Red, x, y, stdStringFormat);
+                DrawProgressBarGDI(e, backBrushGDI, foreBrushGDI, x, y, 146, heightGap, (enemyHP?.Percentage() ?? 0f) * 100f, 100f);
+                e.Graphics.DrawString(string.Format("{0} {1:P1}", enemyHP?.CurrentHP ?? 0, enemyHP?.Percentage() ?? 0f), new Font("Consolas", 10, FontStyle.Bold), Brushes.Red, x, y, stdStringFormat);
             }
         }
 
