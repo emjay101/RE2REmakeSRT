@@ -7,7 +7,8 @@ All builds from me will be digitally signed as 'Travis J Gutjahr'.
 
 For information on how to build the source code yourself, see [BUILDING.md](BUILDING.md).
 
-[![Build status](https://dev.azure.com/Squirrelies/RE2REmakeSRT/_apis/build/status/x64)](https://dev.azure.com/Squirrelies/RE2REmakeSRT/_build/latest?definitionId=1)
+Download here: https://github.com/emjay101/RE2REmakeSRT/releases/tag/v1.0.0-mj 
+Use at own risk. All credit to the original author
 
 Features implemented:
 
