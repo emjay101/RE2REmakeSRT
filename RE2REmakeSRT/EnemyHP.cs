@@ -56,8 +56,12 @@ namespace RE2REmakeSRT
 
         public void Update(int maximumHP, int currentHP, bool poisoned)
         {
+            PosX = 0f;
+            PosY = 0f;
+            PosZ = 0f;
             MaximumHP = maximumHP;
-            CurrentHP = (currentHP <= maximumHP) ? currentHP : 0;            
+            CurrentHP = (currentHP <= maximumHP) ? currentHP : 0;
+            IsPoisoned = poisoned;
         }
 
         public RE2_NPC(int maximumHP, int currentHP, bool poisoned)
@@ -72,3 +76,4 @@ namespace RE2REmakeSRT
     }
 
 }
+

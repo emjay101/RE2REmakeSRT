@@ -135,37 +135,36 @@ namespace RE2REmakeSRT
 
         private void UpdateEnemyTable()
         {
+
             int hp, hpmax;
             bool poisoned;
+            byte[] npc_list = null;
+            long npc_idx = 0L;
             EnemyTable?.UpdatePointers();
             CountEnemyEntries = EnemyTable?.DerefInt(0x18) ?? 0;
             if (CountEnemyEntries > 0)
+                npc_list = EnemyTable?.DerefByteArray(0x40, CountEnemyEntries * sizeof(long));
+            for (int i = 0; i < MAX_ENEMY_COUNT; ++i)
             {
-                byte[] npc_list = EnemyTable.DerefByteArray(0x40, CountEnemyEntries * sizeof(long));
-                long npc_idx = -1;
-                for (int i = 0; i < CountEnemyEntries; ++i)
+                hp = 0;
+                hpmax = 0;
+                poisoned = false;
+                if (CountEnemyEntries > i && (npc_list?.Length ?? 0) > 0)
                 {
-                    hp = 0;
-                    hpmax = 0;
-                    poisoned = false;
-
-                    npc_idx = BitConverter.ToInt64(npc_list, i * sizeof(long));
-                    if (npc_idx != 0)
+                    if ((npc_idx = BitConverter.ToInt64(npc_list, i * sizeof(long))) != 0L)
                     {
-                        if (npc_idx + 0x88L != (PointerEnemyEntries[i]?.Address ?? 0L))
+                        PointerEnemyEntries[i] = new MultilevelPointer(memoryAccess, npc_idx + 0x88L, 0x18L, 0x1A0L);
+                        if (PointerEnemyEntries[i].Address != 0L)
                         {
-                            PointerEnemyEntries[i] = new MultilevelPointer(memoryAccess, npc_idx + 0x88L, 0x18L, 0x1A0L);
-                            if ((PointerEnemyEntries[i]?.Address ?? 0L) != 0L)
-                            {
-                                PointerEnemyStatusEntries[i] = new MultilevelPointer(memoryAccess, PointerEnemyEntries[i].Address + 0xF8);
-                                hp = PointerEnemyEntries[i]?.DerefInt(0x58) ?? 0;
-                                hpmax = PointerEnemyEntries[i]?.DerefInt(0x54) ?? 00;
-                                poisoned = (PointerEnemyStatusEntries[i]?.DerefByte(0x258) ?? 0 )== 1;
-                            }
+                            PointerEnemyStatusEntries[i] = new MultilevelPointer(memoryAccess, PointerEnemyEntries[i].Address + 0xF8L);
+                            hp = PointerEnemyEntries[i].DerefInt(0x58);
+                            hpmax = PointerEnemyEntries[i].DerefInt(0x54);
+                            poisoned = (PointerEnemyStatusEntries[i].DerefByte(0x258)) == 1;
                         }
                     }
-                    EnemyHealth[i] = new RE2_NPC(hpmax, hp, poisoned);                                    
                 }
+
+                EnemyHealth[i] = new RE2_NPC(hpmax, hp, poisoned);
             }
         }
 
@@ -196,6 +195,7 @@ namespace RE2REmakeSRT
             PlayerMaxHealth = PointerPlayerHP.DerefInt(0x54);
             PlayerCurrentHealth = PointerPlayerHP.DerefInt(0x58);
             PlayerPoisoned = PointerPlayerPoison.DerefByte(0x258) == 0x01;
+
             Rank = PointerRank.DerefInt(0x58);
             RankScore = PointerRank.DerefFloat(0x5C);
             FootStepsAll = FootSteps.DerefInt(0x64);           

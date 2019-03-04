@@ -396,11 +396,11 @@ namespace RE2REmakeSRT
                 g.DrawText(font, 14, greyBrush, xOffset + 0, yOffset + 68, "M:" + Program.gameMem.IGTMenuTimer.ToString("00000000000000000000"));
                 g.DrawText(font, 14, greyBrush, xOffset + 0, yOffset + 83, "P:" + Program.gameMem.IGTPausedTimer.ToString("00000000000000000000"));
                 yOffset += 70; // Adding an additional offset to accomdate Raw IGT.
-            }
-
+            }            
+            g.DrawText(font, 16, greyBrush, xOffset + 0, yOffset + (heightGap * ++i), string.Format("Steps (All): {0}", Program.gameMem.FootStepsAll));
             g.DrawText(font, 16, greyBrush, xOffset + 0, yOffset + (heightGap * ++i), string.Format("DA Rank: {0}", Program.gameMem.Rank));
             g.DrawText(font, 16, greyBrush, xOffset + 0, yOffset + (heightGap * ++i), string.Format("DA Score: {0}", Program.gameMem.RankScore));
-
+            
             g.DrawText(font, 16, redBrush, xOffset + 0, yOffset + (heightGap * ++i), "Enemy HP");
             yOffset += 6;
             foreach (RE2_NPC? enemyHP in Program.gameMem.EnemyHealth.Where(a => a?.IsAlive() ?? false).OrderBy(a => a?.Percentage() ?? 0f).ThenByDescending(a => a?.CurrentHP ?? 0))
@@ -409,7 +409,7 @@ namespace RE2REmakeSRT
                 int y = yOffset + (heightGap * ++i);
 
                 DrawProgressBarDirectX(g, backBrushDirectX, foreBrushDirectX, x, y, 158, heightGap, (enemyHP?.Percentage() ?? 0f) * 100f, 100f);
-                g.DrawText(font, 12, redBrush, x + 5, y, string.Format("{0} {1:P1}", enemyHP?.CurrentHP ?? 0, enemyHP?.Percentage() ?? 0f));
+                g.DrawText(font, 12, redBrush, x + 5, y, string.Format("{0} {1:P1} {2}", enemyHP?.CurrentHP ?? 0, enemyHP?.Percentage() ?? 0f, (enemyHP?.IsPoisoned ?? false)? "POIS" : " "));
             }
         }
 
@@ -443,8 +443,6 @@ namespace RE2REmakeSRT
 
 //            e.Graphics.DrawString(string.Format("Steps (Session): {0}", Program.gameMem.FootStepsSession), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
             e.Graphics.DrawString(string.Format("Steps (All): {0}", Program.gameMem.FootStepsAll), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
-
-
             e.Graphics.DrawString(string.Format("DA Rank: {0}", Program.gameMem.Rank), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
             e.Graphics.DrawString(string.Format("DA Score: {0}", Program.gameMem.RankScore), new Font("Consolas", 9, FontStyle.Bold), Brushes.Gray, 0, heightOffset + (heightGap * ++i), stdStringFormat);
 
@@ -455,7 +453,7 @@ namespace RE2REmakeSRT
                 int y = heightOffset + (heightGap * ++i);
 
                 DrawProgressBarGDI(e, backBrushGDI, foreBrushGDI, x, y, 146, heightGap, (enemyHP?.Percentage() ?? 0f) * 100f, 100f);
-                e.Graphics.DrawString(string.Format("{0} {1:P1}", enemyHP?.CurrentHP ?? 0, enemyHP?.Percentage() ?? 0f), new Font("Consolas", 10, FontStyle.Bold), Brushes.Red, x, y, stdStringFormat);
+                e.Graphics.DrawString(string.Format("{0} {1:P1} {2}", enemyHP?.CurrentHP ?? 0, enemyHP?.Percentage() ?? 0f, (enemyHP?.IsPoisoned ?? false) ? "POIS" : " "), new Font("Consolas", 10, FontStyle.Bold), Brushes.Red, x, y, stdStringFormat);
             }
         }
 
